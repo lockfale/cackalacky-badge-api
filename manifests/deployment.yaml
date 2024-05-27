@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cackalacky-badge-api
+  namespace: cackalacky
+  labels:
+    app: cackalacky-badge-api
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: cackalacky-badge-api
+  template:
+    metadata:
+      labels:
+        app: cackalacky-badge-api
+    spec:
+      nodeSelector:
+        "beta.kubernetes.io/os": linux
+      containers:
+        - name: cackalacky-badge-api
+          image: <aws-account-id>.dkr.ecr.us-east-1.amazonaws.com/cackalacky-badge-api
+          ports:
+            - name: http
+              containerPort: 5000
+          envFrom:
+            - secretRef:
+                name: dplr-token-badge-api
+      imagePullSecrets:
+        - name: regcred

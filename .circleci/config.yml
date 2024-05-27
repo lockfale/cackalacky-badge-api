@@ -1,0 +1,18 @@
+version: 2.1
+
+setup: true
+
+orbs:
+  path-filtering: circleci/path-filtering@1.0
+
+workflows:
+  setup-workflow:
+    jobs:
+      - path-filtering/filter:
+          base-revision: main
+          config-path: .circleci/workflows.yml
+          mapping: |
+            connectors/.* connectors-modified true
+            routers/.* routers-modified true
+            .*\.py$ entry-modified true
+            Docker* dockerfile-modified true

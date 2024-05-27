@@ -1,0 +1,7 @@
+.idea
+
+mappings/*.xlsx
+
+.env
+do-not-commit/*
+*.log*

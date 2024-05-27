@@ -1,0 +1,39 @@
+[tool.black]
+line-length = 150
+exclude = ".*.sql|.*.md|.*.pyc|.*.yaml|.*.yml|.*.json|ckcbadgeapi|do-not-commit"
+
+# https://pycqa.github.io/isort/docs/configuration/options.html
+[tool.isort]
+profile = "black"
+float_to_top = true
+skip = [
+".gitignore",
+".dockerignore",
+]
+skip_glob = [
+"**/ckcbadgeapi"
+]
+
+# https://mypy.readthedocs.io/en/stable/config_file.html#confval-exclude
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+files = []
+exclude = [
+'venv',
+'.venv',
+]
+disable_error_code = ["index", "import", "assignment",]
+
+[tool.vulture]
+min_confidence = 80
+sort_by_size = true
+exclude = []
+
+[tool.pydocstyle]
+convention = "numpy"
+add-ignore = "D100,D104"
+match = "^(?!.*stream).*.py$"

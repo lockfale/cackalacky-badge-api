@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- deployment.yaml
+- service.yaml
+namespace: cackalacky
+images:
+- name: /cackalacky-badge-api
+  newName: /cackalacky-badge-api
+  newTag: main-1717ecacaa807453a8628b9c30b69c86a81097eb
+- name: <aws-account-id>.dkr.ecr.us-east-1.amazonaws.com/cackalacky-badge-api
+  newName: <aws-account-id>.dkr.ecr.us-east-1.amazonaws.com/cackalacky-badge-api
+  newTag: main-12e842dd06d1364f25450c89a5187045d71a441c

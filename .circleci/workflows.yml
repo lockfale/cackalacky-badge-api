@@ -1,0 +1,121 @@
+version: 2.1
+
+orbs:
+  aws-cli: circleci/aws-cli@4.1
+  aws-ecr: circleci/aws-ecr@9.0
+
+parameters:
+  connectors-modified:
+    type: boolean
+    default: false
+  routers-modified:
+    type: boolean
+    default: false
+  entry-modified:
+    type: boolean
+    default: false
+  dockerfile-modified:
+    type: boolean
+    default: false
+
+commands:
+  setup_branch_name:
+    description: "Setup branch character replacement"
+    steps:
+      - run:
+          name: "Setup branch character replacement"
+          command: |
+            MODIFIED_BRANCH=$(echo "$CIRCLE_BRANCH" | sed 's/\//_/g')
+            echo "export VALID_BRANCH_NAME=\"$MODIFIED_BRANCH\"" >> "$BASH_ENV"
+
+  install_kustomize:
+    description: "Install kustomize"
+    steps:
+      - run:
+          name: Install kustomize
+          command: |
+            URL=https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v4.5.2/kustomize_v4.5.2_linux_amd64.tar.gz
+            curl -L $URL | tar zx
+            [ -w /usr/local/bin ] && SUDO="" || SUDO=sudo
+            $SUDO chmod +x ./kustomize
+            $SUDO mv ./kustomize /usr/local/bin
+
+jobs:
+  bump_docker_tag:
+    parameters:
+      api-name:
+        type: string
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - setup_branch_name
+      - install_kustomize
+      - checkout
+      - run:
+          name: What are thou params
+          command: |
+            echo "connectors-modified: << pipeline.parameters.connectors-modified >>"
+            echo "routers-modified: << pipeline.parameters.routers-modified >>"
+            echo "entry-modified: << pipeline.parameters.entry-modified >>"
+            echo "dockerfile-modified: << pipeline.parameters.dockerfile-modified >>"
+      - run:
+          name: Bump Docker Tag
+          command: |
+            echo "Updating badge-api..."
+            cd manifests
+            REPO_NAME_VAR="$AWS_ECR_URL/cackalacky-badge-api"
+            echo "repo name var: $REPO_NAME_VAR"
+            kustomize edit set image $REPO_NAME_VAR=$REPO_NAME_VAR:$VALID_BRANCH_NAME-$CIRCLE_SHA1
+      - add_ssh_keys:
+          fingerprints:
+            - "$SSH_FINGERPRINT"
+      - run:
+          name: Commit & Push to GitHub
+          command: |
+            git config user.email "$GITHUB_EMAIL"
+            git config user.name "CircleCI User"
+            git checkout $CIRCLE_BRANCH 
+            git add manifests/kustomization.yaml
+            git commit -am "Bumps docker tag [skip ci]"
+            git push origin $CIRCLE_BRANCH
+
+  deploy_api:
+    parameters:
+      api-name:
+        type: string
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - setup_branch_name
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - aws-ecr/build_and_push_image:
+          account_id: $AWS_ACCOUNT_ID
+          auth:
+            - aws-cli/setup:
+                region: $AWS_REGION
+          create_repo: true
+          dockerfile: Dockerfile
+          path: .
+          push_image: true
+          repo: cackalacky-<< parameters.api-name >>
+          region: $AWS_REGION
+          tag: "$VALID_BRANCH_NAME-$CIRCLE_SHA1"
+
+workflows:
+  build_and_deploy:
+    jobs:
+      - bump_docker_tag:
+          api-name: "badge-api"
+          context:
+            - cackalacky
+            - github
+            - aws-dev
+      - deploy_api:
+          matrix:
+            parameters:
+              api-name: ["badge-api"]
+          requires:
+            - bump_docker_tag
+          context:
+            - aws-dev
